@@ -1,0 +1,18 @@
+{
+  "name": "Hello Peer",
+  "description": "An App",
+  "keywords": [],
+  "env": {
+    "DB_URL": {
+        "Description": "URL for a postgres database",
+        "required": false
+    },
+    "SERVER_IP": {
+        "Description": "IP Address of a machine",
+        "required": false
+    }    
+  },
+  "mount_dir": "src/github.com/jesperfj/hello-peer",
+  "website": "http://github.com/jesperfj/hello-peer",
+  "repository": "http://github.com/jesperfj/hello-peer"
+}
