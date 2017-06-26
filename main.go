@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -11,7 +11,7 @@ import (
 func main() {
 	port := os.Getenv("PORT")
 	backendIP := os.Getenv("SERVER_IP")
-	backendDB := os.Getenv("DB_URL")
+	//backendDB := os.Getenv("DB_URL")
 
 	if port == "" {
 		log.Fatal("$PORT must be set")
@@ -28,20 +28,20 @@ func main() {
 
 	router.GET("/pass/:port/:word", func(c *gin.Context) {
 		if backendIP == "" {
-			c.String(http.NotFound, "No backend configured")
+			c.String(http.StatusNotFound, "No backend configured")
 			return
 		}
 		resp, err := http.Get("http://" + backendIP + ":" + c.Param("port") + "/backend/" + c.Param("word"))
 		if err != nil {
-			c.String(http.StatusInternalServerError, "Backend error: "+err)
+			c.String(http.StatusInternalServerError, "Backend error: "+err.Error())
 			return
 		}
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			c.String(http.StatusInternalServerError, "problem reading response from backend: "+err)
+			c.String(http.StatusInternalServerError, "problem reading response from backend: "+err.Error())
 			return
 		}
-		c.String(resp.StatusCode, "Backend said: "+body)
+		c.String(resp.StatusCode, "Backend said: "+string(body))
 	})
 
 	// This endpoint is used when acting as the backend server

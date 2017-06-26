@@ -25,7 +25,7 @@ body=$(cat <<EOF -
 		"space": "$SPACE_NAME"
 	},
 	"source_blob": {
-		"url": "https://codeload.github.com/jesperfj/intense-go/tar.gz/master"
+		"url": "https://codeload.github.com/jesperfj/hello-peer/tar.gz/master"
 	},
 	"overrides": {
 		"env": {
@@ -43,5 +43,7 @@ result=$(curl -nsX POST https://api.heroku.com/app-setups -d "$body" \
   -H "Content-Type: application/json" \
   -H "Accept: application/vnd.heroku+json; version=3")
 
-jq -r '.app.name' <<< $result
+echo $result
+echo "Created app $(jq -r '.app.name' <<< $result)"
+
 
