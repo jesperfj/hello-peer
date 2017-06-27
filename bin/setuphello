@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Sets up a Heroku app via the app-setups Heroku API endpoint. This endpoint takes a
+# tarball URL and a config json and creates a Heroku app the same way button apps
+# and review apps work. It compiles and deploys the code, sets config vars and adds
+# any addons.
+#
+# In this case, the script creates a tarball out of the hello-peer directory and
+# deploys it as an app.
+
 if [[ -z $1 || -z $2 ]]; then
   echo "Usage: setuphello <stack-name> <space-name>"
   exit 1
@@ -19,13 +27,23 @@ ec2instanceid=$(jq -r '.[] | select(.OutputKey=="EC2Instance") | .OutputValue' <
 postgres_host=$(jq -r '.[] | select(.OutputKey=="DBHost") | .OutputValue' <<< "$stackinfo")
 ec2instanceip=$(aws --profile devbox ec2 describe-instances --filters "Name=instance-id,Values=$ec2instanceid" | jq -r '.Reservations[].Instances[].PublicIpAddress')
 
+# Go one up from script location and deploy that directory as Heroku app
+APP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/.."
+
+echo "Deploying from local directory $APP_DIR"
+tmpfile=$(mktemp)
+(cd $APP_DIR; tar --exclude .git --exclude-from .gitignore -zcf $tmpfile .)
+drop=$(curl -s https://hdrop.herokuapp.com)
+curl -s $(jq -r '.put' <<< $drop) --upload-file $tmpfile
+tarball=$(jq -r '.get' <<< $drop)
+
 body=$(cat <<EOF -
 {
 	"app": {
 		"space": "$SPACE_NAME"
 	},
 	"source_blob": {
-		"url": "https://codeload.github.com/jesperfj/hello-peer/tar.gz/master"
+		"url": "$tarball"
 	},
 	"overrides": {
 		"env": {
@@ -42,4 +60,8 @@ result=$(curl -nsX POST https://api.heroku.com/app-setups -d "$body" \
   -H "Accept: application/vnd.heroku+json; version=3")
 
 echo "Created app $(jq -r '.app.name' <<< $result). It will take a few minutes to boot. Check progress with"
-echo "heroku ps -a $(jq -r '.app.name' <<< $result)"
+echo "  heroku ps -a $(jq -r '.app.name' <<< $result)"
+echo "If something is wrong, check status of the app setup with"
+echo "curl -n https://api.heroku.com/app-setups/$(jq -r '.id' <<< $result) -H \"Accept: application/vnd.heroku+json; version=3\""
+
+rm $tmpfile

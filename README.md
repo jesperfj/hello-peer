@@ -21,11 +21,11 @@ RDS Postgres instance:
 
     bin/createvpc acmestack 
 
-It uses cloudformation and you pass the stack name as argument. You'll be using this stack name to execute other commands. The script will create a VPC with a 172.31.0.0/16 CIDR block. You can choose other /16 CIDR blocks by passing in an extra argument, e.g:
+It uses cloudformation and you pass the stack name as argument. You'll be using this stack name to execute other commands. The script will create a VPC with a 172.31.0.0/24 CIDR block. You can choose other /24 CIDR blocks by passing in an extra argument, e.g:
 
-    bin/createvpc acmestack 172.16
+    bin/createvpc acmestack 172.16.0
 
-to create a 172.16.0.0/16 space. The Heroku Private Space uses 10.0.0.0/16, so don't pick that CIDR block.
+to create a 172.16.0.0/24 space. The Heroku Private Space uses 10.0.0.0/16, so don't pick anything in that CIDR block.
 
 IMPORTANT: This script will upload your public key in $HOME/.ssh/id_rsa.pub. Things won't work if you don't have a key there and if you don't want this public key to be uploaded to your AWS account, then modify the script.
 
