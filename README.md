@@ -41,7 +41,7 @@ This script will
 2. use your Heroku creds to accept the peering connection
 3. use your AWS creds to set up routes between the space and the VPC
 
-### Play with the peering
+### Deploy the test app
 
 To test out the peering, this repo also happens to be a fully functional Heroku app. You can do a "button deploy" of this app which injects the EC2 instance IP address and the postgres URL for the database as config vars using the following command:
 
@@ -56,6 +56,40 @@ Once the app is deployed, you can run the very same app on the EC2 instance in t
 where haikuappname is the name of the app created by the `setuphello` script.
 
 The `runhello` script works by grabbing the slug download URL on your machine using your Heroku credentials and then using that URL in an ssh remote executing on the EC2 instance to download the slug, extract it, and run the app inside it. It's hardcoded for the hello-peer app, but it's easy to adapt for other use cases.
+
+### Exercise the test app
+
+Go back to your other terminal and run:
+
+	curl http://haikuappname.herokuapp.com/pass/5000/goodbye
+
+this hits the Heroku app running in the space. The app will make an HTTP request to the IP address of the EC2 instance in the VPC on port 5000 passing on the message and it'll pass back the response.
+
+### Other exercises
+
+Get a shell on your private space app with:
+
+    heroku run bash -a haikuappname
+
+It'll take a few minutes for it to spin up. Now run
+
+    psql $DB_URL
+
+and you should get a psql prompt on the RDS postgres database running in the VPC.
+
+You can also you `nc` to check connectivity. In a separate terminal get a shell on the EC2 instance with the following command:
+
+    bin/connect acmestack
+
+then run
+
+    nc -l 9999
+
+Now on your one-off dyno, run:
+
+    nc $SERVER_IP 9999
+
+and whatever you type after that should show up in your other terminal window where you're running `nc` in server mode on the EC2 instance.
 
 ### TODO
 
