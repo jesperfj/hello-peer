@@ -77,7 +77,7 @@ It'll take a few minutes for it to spin up. Now run
 
 and you should get a psql prompt on the RDS postgres database running in the VPC.
 
-You can also you `nc` to check connectivity. In a separate terminal get a shell on the EC2 instance with the following command:
+You can also use `nc` to check connectivity. In a separate terminal get a shell on the EC2 instance with the following command:
 
     bin/connect acmestack
 
