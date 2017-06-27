@@ -41,12 +41,12 @@ func main() {
 			c.String(http.StatusInternalServerError, "problem reading response from backend: "+err.Error())
 			return
 		}
-		c.String(resp.StatusCode, "Backend said: "+string(body))
+		c.String(resp.StatusCode, "Backend said:\n"+string(body)+"\n")
 	})
 
 	// This endpoint is used when acting as the backend server
 	router.GET("/backend/:word", func(c *gin.Context) {
-		c.String(http.StatusOK, "Hello from the backend")
+		c.String(http.StatusOK, "You say "+c.Param("word")+"\nI say hello\n")
 	})
 
 	router.Run(":" + port)
