@@ -17,7 +17,7 @@ Parameters:
     Default: 172.31.0.0/25
   Cidr1:
     Type: String
-    Default: 172.31.128.0/25
+    Default: 172.31.0.128/25
 
 
 Resources:

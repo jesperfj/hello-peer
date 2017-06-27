@@ -10,7 +10,7 @@
 # key to be uploaded to your AWS account, then modify the script.
 
 if [[ -z $1 ]]; then
-  echo "Usage: createvpc <stack-name> [cidrtop2] # e.g createvpc mystack 172.20"
+  echo "Usage: createvpc <stack-name> [cidr24] # e.g createvpc mystack 172.31.0"
   exit 1
 fi
 
@@ -21,7 +21,7 @@ STACK_NAME=$1
 # directly. 
 
 if [[ -z $2 ]]; then
-  BASE_CIDR="172.31"
+  BASE_CIDR="172.31.0"
 else
   BASE_CIDR=$2
 fi
@@ -41,7 +41,6 @@ AZ1=$(echo $AZS | jq -r '.AvailabilityZones[0].ZoneName')
 AZ2=$(echo $AZS | jq -r '.AvailabilityZones[1].ZoneName')
 echo "Picked AZs: $AZ1 and $AZ2"
 
-# 
 
 KEYPAIRS=$(aws --profile $AWS_PROFILE ec2 describe-key-pairs)
 
@@ -51,15 +50,19 @@ if ! jq -e '.KeyPairs[] | select(.KeyName=="default-ssh-key")' <<< $KEYPAIRS > /
   RESULT=$(aws --profile $AWS_PROFILE ec2 import-key-pair --key-name default-ssh-key --public-key-material file://$HOME/.ssh/id_rsa.pub)
 fi
 
+# We need to find the right path to the vpc.yaml file. We try to get the dir of this script.
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+
 STACK_ID=$(aws --profile $AWS_PROFILE cloudformation create-stack --stack-name $STACK_NAME \
-               --template-body "$(cat vpc.yaml)" \
+               --template-body "$(cat $DIR/vpc.yaml)" \
                --parameters \
                  ParameterKey=StackName,ParameterValue=$STACK_NAME \
                  ParameterKey=AZ1,ParameterValue=$AZ1 \
                  ParameterKey=AZ2,ParameterValue=$AZ2 \
-                 ParameterKey=Cidr,ParameterValue=${BASE_CIDR}.0.0/16 \
-                 ParameterKey=Cidr0,ParameterValue=${BASE_CIDR}.0.0/24 \
-                 ParameterKey=Cidr1,ParameterValue=${BASE_CIDR}.1.0/24 \
+                 ParameterKey=Cidr,ParameterValue=${BASE_CIDR}.0/24 \
+                 ParameterKey=Cidr0,ParameterValue=${BASE_CIDR}.0/25 \
+                 ParameterKey=Cidr1,ParameterValue=${BASE_CIDR}.128/25 \
            | jq -r .StackId)
 
 # Wait for the stack to be ready. Maybe you want to modify this so the script doesn't block.
