@@ -37,13 +37,9 @@ body=$(cat <<EOF -
 EOF
 )
 
-echo $body
-
 result=$(curl -nsX POST https://api.heroku.com/app-setups -d "$body" \
   -H "Content-Type: application/json" \
   -H "Accept: application/vnd.heroku+json; version=3")
 
-echo $result
-echo "Created app $(jq -r '.app.name' <<< $result)"
-
-
+echo "Created app $(jq -r '.app.name' <<< $result). It will take a few minutes to boot. Check progress with"
+echo "heroku ps -a $(jq -r '.app.name' <<< $result)"

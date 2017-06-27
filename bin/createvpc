@@ -1,11 +1,24 @@
 #!/bin/bash
 
+# This script creates a new VPC with one t2.micro EC2 instance and one db.t2.micro 
+# RDS Postgres instance. The EC2 instance is reachable over SSH and the VPC has two 
+# subnets in two AZs to follow RDS best practices. So the cloudformation template is
+# not exactly trivial.
+#
+# IMPORTANT: This script will upload your public key in $HOME/.ssh/id_rsa.pub.
+# Things won't work if you don't have a key there and if you don't want this public
+# key to be uploaded to your AWS account, then modify the script.
+
 if [[ -z $1 ]]; then
   echo "Usage: createvpc <stack-name> [cidrtop2] # e.g createvpc mystack 172.20"
   exit 1
 fi
 
 STACK_NAME=$1
+
+# It's a little unconventional to ask for a CIDR block in this format, but it saves
+# any fancing parsing here or in the CF template. We just append the lower parts
+# directly. 
 
 if [[ -z $2 ]]; then
   BASE_CIDR="172.31"
@@ -19,11 +32,16 @@ fi
 
 set -euo pipefail
 
+# It's easier to figure out which AZs to use outside of the CF template and pass them
+# in as parameters.
+
 AZS=$(aws --profile $AWS_PROFILE ec2 describe-availability-zones)
 
 AZ1=$(echo $AZS | jq -r '.AvailabilityZones[0].ZoneName')
 AZ2=$(echo $AZS | jq -r '.AvailabilityZones[1].ZoneName')
 echo "Picked AZs: $AZ1 and $AZ2"
+
+# 
 
 KEYPAIRS=$(aws --profile $AWS_PROFILE ec2 describe-key-pairs)
 
@@ -43,6 +61,8 @@ STACK_ID=$(aws --profile $AWS_PROFILE cloudformation create-stack --stack-name $
                  ParameterKey=Cidr0,ParameterValue=${BASE_CIDR}.0.0/24 \
                  ParameterKey=Cidr1,ParameterValue=${BASE_CIDR}.1.0/24 \
            | jq -r .StackId)
+
+# Wait for the stack to be ready. Maybe you want to modify this so the script doesn't block.
 
 while true ; do
   sleep 5
