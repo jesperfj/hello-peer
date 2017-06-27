@@ -47,7 +47,7 @@ To test out the peering, this repo also happens to be a fully functional Heroku 
 
     bin/setuphello acmestack acmespace
 
-This will deploy what's in the jesperfj/hello-peer Github repository (check the script). You can of course manually create a Heroku app in your space, push the code and set the config vars. This is just a convenience.
+Note that this will deploy what's in the `jesperfj/hello-peer` Github repository. It will *not* deploy whatever you have on local disk. You can of course manually create a Heroku app in your space, push the code and set the config vars. This is just a convenience.
 
 Once the app is deployed, you can run the very same app on the EC2 instance in the VPC. This lets you check if the peering connection is working. In a separate terminal, run:
 
