@@ -25,7 +25,7 @@ set -euo pipefail
 stackinfo=$(aws --profile $AWS_PROFILE cloudformation describe-stacks | jq ".Stacks[] | select(.StackName==\"$STACK_NAME\") | .Outputs")
 ec2instanceid=$(jq -r '.[] | select(.OutputKey=="EC2Instance") | .OutputValue' <<< "$stackinfo")
 postgres_host=$(jq -r '.[] | select(.OutputKey=="DBHost") | .OutputValue' <<< "$stackinfo")
-ec2instanceip=$(aws --profile devbox ec2 describe-instances --filters "Name=instance-id,Values=$ec2instanceid" | jq -r '.Reservations[].Instances[].PublicIpAddress')
+ec2instanceip=$(aws --profile devbox ec2 describe-instances --filters "Name=instance-id,Values=$ec2instanceid" | jq -r '.Reservations[].Instances[].PrivateIpAddress')
 
 # Go one up from script location and deploy that directory as Heroku app
 APP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/.."
