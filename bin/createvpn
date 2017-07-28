@@ -1,0 +1,65 @@
+#!/bin/bash
+
+if [[ -z $1 || -z $2 ]]; then
+	echo "Usage: createvpn <space-name> <google-region>"
+	exit 1
+fi
+
+space=$1
+region=$2
+
+gce_cidr="10.128.0.0/20"
+
+space_cidr=$(heroku spaces:peering:info --space $space --json | jq -r .vpc_cidr)
+
+if [[ $space_cidr = "10.128.0.0/16" ]]; then
+	echo "Space CIDR 10.128.0.0/16 cannot be used as space CIDR for this script."
+	exit 1
+fi
+
+gce_gateway_ip=$(gcloud compute addresses list --format=json | jq -r ".[] | select(.name==\"$space-ip\") | .address")
+
+if [ -z "$gce_gateway_ip" ]; then
+	gce_gateway_ip=$(gcloud compute addresses create ${space}-ip --region $region --format=json | jq -r .[0].address)
+fi
+
+echo "Using $gce_gateway_ip as GCE gateway IP address"
+
+vpn_info=$(heroku spaces:vpn:config --space $space --json)
+
+if [ -z "$vpn_info" ]; then
+
+	heroku spaces:vpn:create --space $space --cidrs $gce_cidr --ip $gce_gateway_ip
+	heroku spaces:vpn:wait --space $space
+	vpn_info=$(heroku spaces:vpn:config --space $space --json)
+
+fi
+
+aws_gateway_ip1=$(jq -r .ipsec_tunnels[0].vpn_gateway.outside_address.ip_address <<< "$vpn_info")
+psk1=$(jq -r .ipsec_tunnels[0].ike.pre_shared_key <<< "$vpn_info")
+aws_gateway_ip2=$(jq -r .ipsec_tunnels[1].vpn_gateway.outside_address.ip_address <<< "$vpn_info")
+psk2=$(jq -r .ipsec_tunnels[1].ike.pre_shared_key <<< "$vpn_info")
+
+
+echo "Creating VPN gateway in GCE"
+gcloud compute target-vpn-gateways create ${space}-vpn --network default --region $region
+
+echo "Setting up forwarding rules for GCE VPN gateway and GCE gateway IP address"
+gcloud compute forwarding-rules create ${space}-rule-esp --region us-central1 --ip-protocol ESP --address $gce_gateway_ip --target-vpn-gateway ${space}-vpn
+gcloud compute forwarding-rules create ${space}-rule-udp500 --region us-central1 --ip-protocol UDP --ports 500 --address $gce_gateway_ip --target-vpn-gateway ${space}-vpn
+gcloud compute forwarding-rules create ${space}-rule-udp4500 --region us-central1 --ip-protocol UDP --ports 4500 --address $gce_gateway_ip --target-vpn-gateway ${space}-vpn
+
+echo "Creating two tunnels from $space to default GCE network in region $region"
+gcloud compute vpn-tunnels create ${space}-tunnel1 --peer-address $aws_gateway_ip1 --region $region --ike-version 1 --shared-secret $psk1 --target-vpn-gateway ${space}-vpn --local-traffic-selector 0.0.0.0/0 --remote-traffic-selector 0.0.0.0/0
+gcloud compute vpn-tunnels create ${space}-tunnel2 --peer-address $aws_gateway_ip2 --region $region --ike-version 1 --shared-secret $psk2 --target-vpn-gateway ${space}-vpn --local-traffic-selector 0.0.0.0/0 --remote-traffic-selector 0.0.0.0/0
+
+echo "Setting up routes for the 2 tunnels"
+gcloud compute routes create ${space}-route1 --network default --next-hop-vpn-tunnel ${space}-tunnel1 --next-hop-vpn-tunnel-region $region --destination-range $space_cidr
+gcloud compute routes create ${space}-route2 --network default --next-hop-vpn-tunnel ${space}-tunnel2 --next-hop-vpn-tunnel-region $region --destination-range $space_cidr
+
+echo "Setting up permissive firewall rule to allow traffic between space dynos and GCE instances"
+gcloud compute firewall-rules create ${space}-firewall-rule --network default --allow all --source-ranges $space_cidr
+
+echo "All done. Check status with"
+echo "heroku spaces:vpn:info --space $space"
+
