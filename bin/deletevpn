@@ -1,0 +1,35 @@
+#!/bin/bash
+
+if [[ -z $1 || -z $2 ]]; then
+	echo "Usage: deletevpn <space-name> <google-region>"
+	exit 1
+fi
+
+space=$1
+region=$2
+
+# Destroy VPN gateway in space
+echo "$space" | heroku spaces:vpn:destroy --space $space
+
+# Delete permissive GCE firewall rule
+gcloud -q compute firewall-rules delete ${space}-firewall-rule
+
+
+# Delete GCE routes
+gcloud -q compute routes delete ${space}-route1
+gcloud -q compute routes delete ${space}-route2
+
+# Delete GCE VPN tunnels
+gcloud -q compute vpn-tunnels delete ${space}-tunnel1 --region $region
+gcloud -q compute vpn-tunnels delete ${space}-tunnel2 --region $region
+
+# Delete GCE forwarding rules
+gcloud -q compute forwarding-rules delete ${space}-rule-esp --region $region
+gcloud -q compute forwarding-rules delete ${space}-rule-udp500 --region $region
+gcloud -q compute forwarding-rules delete ${space}-rule-udp4500 --region $region
+
+# Delete GCE VPN gateway
+gcloud -q compute target-vpn-gateways delete ${space}-vpn --region $region
+
+# Delete GCE IP address
+gcloud -q compute addresses delete ${space}-ip --region $region
