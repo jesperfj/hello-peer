@@ -1,1 +1,1 @@
-web: hello-peer
+web: test-web-server
