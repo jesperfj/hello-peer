@@ -45,9 +45,9 @@ echo "Creating VPN gateway in GCE"
 gcloud compute target-vpn-gateways create ${space}-vpn --network default --region $region
 
 echo "Setting up forwarding rules for GCE VPN gateway and GCE gateway IP address"
-gcloud compute forwarding-rules create ${space}-rule-esp --region us-central1 --ip-protocol ESP --address $gce_gateway_ip --target-vpn-gateway ${space}-vpn
-gcloud compute forwarding-rules create ${space}-rule-udp500 --region us-central1 --ip-protocol UDP --ports 500 --address $gce_gateway_ip --target-vpn-gateway ${space}-vpn
-gcloud compute forwarding-rules create ${space}-rule-udp4500 --region us-central1 --ip-protocol UDP --ports 4500 --address $gce_gateway_ip --target-vpn-gateway ${space}-vpn
+gcloud compute forwarding-rules create ${space}-rule-esp --region $region --ip-protocol ESP --address $gce_gateway_ip --target-vpn-gateway ${space}-vpn
+gcloud compute forwarding-rules create ${space}-rule-udp500 --region $region --ip-protocol UDP --ports 500 --address $gce_gateway_ip --target-vpn-gateway ${space}-vpn
+gcloud compute forwarding-rules create ${space}-rule-udp4500 --region $region --ip-protocol UDP --ports 4500 --address $gce_gateway_ip --target-vpn-gateway ${space}-vpn
 
 echo "Creating two tunnels from $space to default GCE network in region $region"
 gcloud compute vpn-tunnels create ${space}-tunnel1 --peer-address $aws_gateway_ip1 --region $region --ike-version 1 --shared-secret $psk1 --target-vpn-gateway ${space}-vpn --local-traffic-selector 0.0.0.0/0 --remote-traffic-selector 0.0.0.0/0
