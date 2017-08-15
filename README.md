@@ -14,6 +14,13 @@ You'll need a private space to play with. Don't use an existing space with impor
 
 	heroku spaces:create acmespace --org myorg
 
+If you want to choose your own CIDR block for the space you can with the `--cidr` option. For example:
+
+    heroku spaces:create acmespace --org myorg --cidr 172.24.0.0/16
+
+The CIDR block must be a /16 block and it must be one of the offical private IP blocks.
+
+
 ### Create a VPC
 
 The following command creates a new VPC with one t2.micro EC2 instance and one db.t2.micro 
@@ -25,7 +32,7 @@ It uses cloudformation and you pass the stack name as argument. You'll be using 
 
     bin/createvpc acmestack 172.16.0
 
-to create a 172.16.0.0/24 space. The Heroku Private Space uses 10.0.0.0/16, so don't pick anything in that CIDR block.
+to create a 172.16.0.0/24 space. The Heroku Private Space uses 10.0.0.0/16 by default, so don't pick anything in that CIDR block or specify a custom cidr block range for the Heroku Space.
 
 IMPORTANT: This script will upload your public key in $HOME/.ssh/id_rsa.pub. Things won't work if you don't have a key there and if you don't want this public key to be uploaded to your AWS account, then modify the script.
 
