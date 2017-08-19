@@ -9,7 +9,7 @@ space=$1
 region=$2
 
 # Destroy VPN gateway in space
-echo "$space" | heroku spaces:vpn:destroy --space $space
+heroku spaces:vpn:destroy --space $space --confirm $space
 
 # Delete permissive GCE firewall rule
 gcloud -q compute firewall-rules delete ${space}-firewall-rule
