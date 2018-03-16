@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# This script creates a new VPC with one t2.micro EC2 instance and one db.t2.micro 
+# RDS Postgres instance. The EC2 instance is reachable over SSH and the VPC has two 
+# subnets in two AZs to follow RDS best practices. So the cloudformation template is
+# not exactly trivial.
+#
+# IMPORTANT: This script will upload your public key in $HOME/.ssh/id_rsa.pub.
+# Things won't work if you don't have a key there and if you don't want this public
+# key to be uploaded to your AWS account, then modify the script.
+
+if [[ -z $1 ]]; then
+  echo "Usage: createvpc4 <stack-name> [cidr24] # e.g createvpc mystack 172.31.0"
+  exit 1
+fi
+
+STACK_NAME=$1
+
+# It's a little unconventional to ask for a CIDR block in this format, but it saves
+# any fancing parsing here or in the CF template. We just append the lower parts
+# directly. 
+
+if [[ -z $2 ]]; then
+  BASE_CIDR="172.31.0"
+else
+  BASE_CIDR=$2
+fi
+
+if [[ -z $AWS_PROFILE ]]; then
+  AWS_PROFILE=default
+fi
+
+set -euo pipefail
+
+KEYPAIRS=$(aws --profile $AWS_PROFILE ec2 describe-key-pairs)
+
+# Upload laptop ssh key if it's not already there
+
+if ! jq -e '.KeyPairs[] | select(.KeyName=="default-ssh-key")' <<< $KEYPAIRS > /dev/null; then
+  RESULT=$(aws --profile $AWS_PROFILE ec2 import-key-pair --key-name default-ssh-key --public-key-material file://$HOME/.ssh/id_rsa.pub)
+fi
+
+# We need to find the right path to the vpc.yaml file. We try to get the dir of this script.
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+
+STACK_ID=$(aws --profile $AWS_PROFILE cloudformation create-stack --stack-name $STACK_NAME \
+               --template-body "$(cat $DIR/vpc4.yaml)" \
+               --parameters \
+                 ParameterKey=StackName,ParameterValue=$STACK_NAME \
+                 ParameterKey=Cidr,ParameterValue=${BASE_CIDR}.0/24 \
+           | jq -r .StackId)
+
+# Wait for the stack to be ready. Maybe you want to modify this so the script doesn't block.
+
+while true ; do
+  sleep 5
+  STATUS=$(aws --profile $AWS_PROFILE cloudformation describe-stacks | jq -r ".Stacks[] | select(.StackId==\"$STACK_ID\") | .StackStatus")
+  if [ "$STATUS" != "CREATE_IN_PROGRESS" ] ; then
+    break
+  fi
+  echo -n '.'
+done
+echo
+
+if [ "$STATUS" == "CREATE_COMPLETE" ]; then
+  echo "Setup complete"
+else
+  echo "Setup failed. Check output below and inspect the $STACK_NAME cloudformation stack manually in AWS console for clues"
+  aws --profile devbox cloudformation describe-stacks | jq -r ".Stacks[] | select(.StackId==\"$STACK_ID\")"  
+fi
